@@ -9,13 +9,13 @@ class FTPClient {
     private DataOutputStream dataOutputStream;
     private BufferedReader bufferedReader;
 
-    FTPClient(Socket socket) throws IOException {
+    public FTPClient(Socket socket) throws IOException {
         dataInputStream = new DataInputStream(socket.getInputStream());
         dataOutputStream = new DataOutputStream(socket.getOutputStream());
         bufferedReader = new BufferedReader(new InputStreamReader(System.in));
     }
 
-    void sendFile() throws IOException {
+    public void sendFile() throws IOException {
         String filename;
         System.out.print("Enter File Name :");
         filename = bufferedReader.readLine();
@@ -55,7 +55,7 @@ class FTPClient {
 
     }
 
-    void receiveFile() throws IOException {
+    public void receiveFile() throws IOException {
         String fileName;
         System.out.print("Enter File Name :");
         fileName = bufferedReader.readLine();
