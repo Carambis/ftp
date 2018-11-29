@@ -4,139 +4,99 @@ import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
 
-class FTPServer extends Thread
-{
-    Socket ClientSoc;
+public class FTPServer extends Thread {
+    DataInputStream dataInputStream;
+    DataOutputStream dataOutputStream;
 
-    DataInputStream din;
-    DataOutputStream dout;
-
-    FTPServer(Socket soc)
-    {
-        try
-        {
-            ClientSoc=soc;
-            din=new DataInputStream(ClientSoc.getInputStream());
-            dout=new DataOutputStream(ClientSoc.getOutputStream());
-            System.out.println("FTP Client Connected ...");
-            start();
-
-        }
-        catch(Exception ex)
-        {
-        }
+    public FTPServer(Socket socket) throws IOException {
+        dataInputStream = new DataInputStream(socket.getInputStream());
+        dataOutputStream = new DataOutputStream(socket.getOutputStream());
+        System.out.println("FTP Client Connected ...");
+        start();
     }
-    void SendFile() throws Exception
-    {
-        String filename=din.readUTF();
-        File f=new File(filename);
-        if(!f.exists())
-        {
-            dout.writeUTF("File Not Found");
-            return;
-        }
-        else
-        {
-            dout.writeUTF("READY");
-            FileInputStream fin=new FileInputStream(f);
+
+    public void sendFile() throws IOException {
+        String filename = dataInputStream.readUTF();
+        File file = new File(filename);
+        if (!file.exists()) {
+            dataOutputStream.writeUTF("File Not Found");
+        } else {
+            dataOutputStream.writeUTF("READY");
+            FileInputStream fileInputStream = new FileInputStream(file);
             int ch;
-            do
-            {
-                ch=fin.read();
-                dout.writeUTF(String.valueOf(ch));
+            do {
+                ch = fileInputStream.read();
+                dataOutputStream.writeUTF(String.valueOf(ch));
             }
-            while(ch!=-1);
-            fin.close();
-            dout.writeUTF("File Receive Successfully");
+            while (ch != -1);
+            fileInputStream.close();
+            dataOutputStream.writeUTF("File Receive Successfully");
         }
     }
 
-    void ReceiveFile() throws Exception
-    {
-        String filename=din.readUTF();
-        if(filename.compareTo("File not found")==0)
-        {
+    public void receiveFile() throws IOException {
+        String filename = dataInputStream.readUTF();
+        if (filename.equals("File not found")) {
             return;
         }
-        File f=new File(filename);
+        File file = new File(filename);
         String option;
 
-        if(f.exists())
-        {
-            dout.writeUTF("File Already Exists");
-            option=din.readUTF();
-        }
-        else
-        {
-            dout.writeUTF("SendFile");
-            option="Y";
+        if (file.exists()) {
+            dataOutputStream.writeUTF("File Already Exists");
+            option = dataInputStream.readUTF();
+        } else {
+            dataOutputStream.writeUTF("SendFile");
+            option = "Y";
         }
 
-        if(option.compareTo("Y")==0)
-        {
-            FileOutputStream fout=new FileOutputStream(f);
+        if (option.equals("Y")) {
+            FileOutputStream fileOutputStream = new FileOutputStream(file);
             int ch;
             String temp;
-            do
-            {
-                temp=din.readUTF();
-                ch=Integer.parseInt(temp);
-                if(ch!=-1)
-                {
-                    fout.write(ch);
+            do {
+                temp = dataInputStream.readUTF();
+                ch = Integer.parseInt(temp);
+                if (ch != -1) {
+                    fileOutputStream.write(ch);
                 }
-            }while(ch!=-1);
-            fout.close();
-            dout.writeUTF("File Send Successfully");
+            } while (ch != -1);
+            fileOutputStream.close();
+            dataOutputStream.writeUTF("File Send Successfully");
         }
-        else
-        {
-            return;
-        }
-
     }
 
 
-    public void run()
-    {
-        while(true)
-        {
-            try
-            {
+    public void run() {
+        try {
+            while (true) {
                 System.out.println("Waiting for Command ...");
-                String Command=din.readUTF();
-                if(Command.compareTo("GET")==0)
-                {
-                    System.out.println("\tGET Command Received ...");
-                    SendFile();
-                    continue;
-                }
-                else if(Command.compareTo("SEND")==0)
-                {
-                    System.out.println("\tSEND Command Receiced ...");
-                    ReceiveFile();
-                    continue;
-                }
-                else if(Command.compareTo("DISCONNECT")==0)
-                {
-                    System.out.println("\tDisconnect Command Received ...");
-                    System.exit(1);
+                String Command = dataInputStream.readUTF();
+                switch (Command) {
+                    case "GET":
+                        System.out.println("\tGET Command Received ...");
+                        sendFile();
+                        break;
+                    case "SEND":
+                        System.out.println("\tSEND Command Receiced ...");
+                        receiveFile();
+                        break;
+                    case "DISCONNECT":
+                        System.out.println("\tDisconnect Command Received ...");
+                        System.exit(1);
                 }
             }
-            catch(Exception ex)
-            {
-            }
+        } catch (IOException e) {
+            System.out.println(e.getMessage());
         }
     }
-    public static void main(String args[]) throws Exception
-    {
-        ServerSocket soc=new ServerSocket(5217);
-        System.out.println("FTP Server Started on Port Number 5217");
-        while(true)
-        {
-            System.out.println("Waiting for Connection ...");
-            FTPServer t=new FTPServer(soc.accept());
 
+    public static void main(String args[]) throws Exception {
+        ServerSocket serverSocket = new ServerSocket(8080);
+        System.out.println("FTP Server Started on Port Number 8080");
+        while (true) {
+            System.out.println("Waiting for Connection ...");
+            new FTPServer(serverSocket.accept());
         }
     }
 }

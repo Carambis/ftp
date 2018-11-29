@@ -3,7 +3,7 @@ package com.company;
 import java.io.*;
 import java.net.Socket;
 
-class FTPClient {
+public class FTPClient {
 
     private DataInputStream dataInputStream;
     private DataOutputStream dataOutputStream;
@@ -118,7 +118,7 @@ class FTPClient {
     }
 
     public static void main(String args[]) throws Exception {
-        Socket socket = new Socket("127.0.0.1", 5217);
+        Socket socket = new Socket("127.0.0.1", 8080);
         FTPClient ftpClient = new FTPClient(socket);
         ftpClient.displayMenu();
 
