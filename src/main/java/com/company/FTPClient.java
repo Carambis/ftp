@@ -4,101 +4,91 @@ import java.io.*;
 import java.net.Socket;
 
 class FTPClient {
-    Socket ClientSoc;
 
-    DataInputStream din;
-    DataOutputStream dout;
-    BufferedReader br;
+    private DataInputStream dataInputStream;
+    private DataOutputStream dataOutputStream;
+    private BufferedReader bufferedReader;
 
-    FTPClient(Socket soc) {
-        try {
-            ClientSoc = soc;
-            din = new DataInputStream(ClientSoc.getInputStream());
-            dout = new DataOutputStream(ClientSoc.getOutputStream());
-            br = new BufferedReader(new InputStreamReader(System.in));
-        } catch (Exception ex) {
-        }
+    FTPClient(Socket socket) throws IOException {
+        dataInputStream = new DataInputStream(socket.getInputStream());
+        dataOutputStream = new DataOutputStream(socket.getOutputStream());
+        bufferedReader = new BufferedReader(new InputStreamReader(System.in));
     }
 
-    void SendFile() throws Exception {
-
+    void sendFile() throws IOException {
         String filename;
         System.out.print("Enter File Name :");
-        filename = br.readLine();
+        filename = bufferedReader.readLine();
 
-        File f = new File(filename);
-        if (!f.exists()) {
+        File file = new File(filename);
+        if (!file.exists()) {
             System.out.println("File not Exists...");
-            dout.writeUTF("File not found");
+            dataOutputStream.writeUTF("File not found");
             return;
         }
 
-        dout.writeUTF(filename);
+        dataOutputStream.writeUTF(filename);
 
-        String msgFromServer = din.readUTF();
-        if (msgFromServer.compareTo("File Already Exists") == 0) {
-            String Option;
+        String msgFromServer = dataInputStream.readUTF();
+        if (msgFromServer.equals("File Already Exists")) {
+            String option;
             System.out.println("File Already Exists. Want to OverWrite (Y/N) ?");
-            Option = br.readLine();
-            if (Option == "Y") {
-                dout.writeUTF("Y");
+            option = bufferedReader.readLine();
+            if (option.equals("Y")) {
+                dataOutputStream.writeUTF("Y");
             } else {
-                dout.writeUTF("N");
+                dataOutputStream.writeUTF("N");
                 return;
             }
         }
 
         System.out.println("Sending File ...");
-        FileInputStream fin = new FileInputStream(f);
+        FileInputStream fileInputStream = new FileInputStream(file);
         int ch;
         do {
-            ch = fin.read();
-            dout.writeUTF(String.valueOf(ch));
+            ch = fileInputStream.read();
+            dataOutputStream.writeUTF(String.valueOf(ch));
         }
         while (ch != -1);
-        fin.close();
-        System.out.println(din.readUTF());
+        fileInputStream.close();
+        System.out.println(dataInputStream.readUTF());
 
     }
 
-    void ReceiveFile() throws Exception {
+    void receiveFile() throws IOException {
         String fileName;
         System.out.print("Enter File Name :");
-        fileName = br.readLine();
-        dout.writeUTF(fileName);
-        String msgFromServer = din.readUTF();
+        fileName = bufferedReader.readLine();
+        dataOutputStream.writeUTF(fileName);
+        String msgFromServer = dataInputStream.readUTF();
 
-        if (msgFromServer.compareTo("File Not Found") == 0) {
+        if (msgFromServer.equals("File Not Found")) {
             System.out.println("File not found on Server ...");
-            return;
-        } else if (msgFromServer.compareTo("READY") == 0) {
+        } else if (msgFromServer.equals("READY")) {
             System.out.println("Receiving File ...");
-            File f = new File(fileName);
-            if (f.exists()) {
-                String Option;
+            File file = new File(fileName);
+            if (file.exists()) {
+                String option;
                 System.out.println("File Already Exists. Want to OverWrite (Y/N) ?");
-                Option = br.readLine();
-                if (Option == "N") {
-                    dout.flush();
+                option = bufferedReader.readLine();
+                if (option.equals("N")) {
+                    dataOutputStream.flush();
                     return;
                 }
             }
-            FileOutputStream fout = new FileOutputStream(f);
+            FileOutputStream fileOutputStream = new FileOutputStream(file);
             int ch;
             String temp;
             do {
-                temp = din.readUTF();
+                temp = dataInputStream.readUTF();
                 ch = Integer.parseInt(temp);
                 if (ch != -1) {
-                    fout.write(ch);
+                    fileOutputStream.write(ch);
                 }
             } while (ch != -1);
-            fout.close();
-            System.out.println(din.readUTF());
-
+            fileOutputStream.close();
+            System.out.println(dataInputStream.readUTF());
         }
-
-
     }
 
     public void displayMenu() throws Exception {
@@ -109,24 +99,28 @@ class FTPClient {
             System.out.println("3. Exit");
             System.out.print("\nEnter Choice :");
             int choice;
-            choice = Integer.parseInt(br.readLine());
-            if (choice == 1) {
-                dout.writeUTF("SEND");
-                SendFile();
-            } else if (choice == 2) {
-                dout.writeUTF("GET");
-                ReceiveFile();
-            } else {
-                dout.writeUTF("DISCONNECT");
-                System.exit(1);
+            choice = Integer.parseInt(bufferedReader.readLine());
+            switch (choice) {
+                case 1:
+                    dataOutputStream.writeUTF("SEND");
+                    sendFile();
+                    break;
+                case 2:
+                    dataOutputStream.writeUTF("GET");
+                    receiveFile();
+                    break;
+                case 3:
+                    dataOutputStream.writeUTF("DISCONNECT");
+                    System.exit(1);
+                    break;
             }
         }
     }
 
     public static void main(String args[]) throws Exception {
-        Socket soc = new Socket("127.0.0.1", 5217);
-        FTPClient t = new FTPClient(soc);
-        t.displayMenu();
+        Socket socket = new Socket("127.0.0.1", 5217);
+        FTPClient ftpClient = new FTPClient(socket);
+        ftpClient.displayMenu();
 
     }
 }
