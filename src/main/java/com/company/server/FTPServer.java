@@ -1,12 +1,20 @@
-package com.company;
+package com.company.server;
+
+import com.sun.xml.internal.ws.policy.privateutil.PolicyUtils;
 
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.attribute.BasicFileAttributes;
+import java.sql.Timestamp;
+import java.util.concurrent.TimeUnit;
 
 public class FTPServer extends Thread {
-    DataInputStream dataInputStream;
-    DataOutputStream dataOutputStream;
+    private String repository = "server/";
+    private DataInputStream dataInputStream;
+    private DataOutputStream dataOutputStream;
 
     public FTPServer(Socket socket) throws IOException {
         dataInputStream = new DataInputStream(socket.getInputStream());
@@ -17,7 +25,7 @@ public class FTPServer extends Thread {
 
     public void sendFile() throws IOException {
         String filename = dataInputStream.readUTF();
-        File file = new File(filename);
+        File file = new File(repository + filename);
         if (!file.exists()) {
             dataOutputStream.writeUTF("File Not Found");
         } else {
@@ -39,7 +47,7 @@ public class FTPServer extends Thread {
         if (filename.equals("File not found")) {
             return;
         }
-        File file = new File(filename);
+        File file = new File(repository + filename);
         String option;
 
         if (file.exists()) {
@@ -78,8 +86,16 @@ public class FTPServer extends Thread {
                         sendFile();
                         break;
                     case "SEND":
-                        System.out.println("\tSEND Command Receiced ...");
+                        System.out.println("\tSEND Command Received ...");
                         receiveFile();
+                        break;
+                    case "CHANGE":
+                        System.out.println("\tCHANGE Command Received ...");
+                        changeRepository();
+                        break;
+                    case "GET_LIST":
+                        System.out.println("\tGET_LIST Command Received ...");
+                        getListFile();
                         break;
                     case "DISCONNECT":
                         System.out.println("\tDisconnect Command Received ...");
@@ -91,7 +107,43 @@ public class FTPServer extends Thread {
         }
     }
 
-    public static void main(String args[]) throws Exception {
+    private void getListFile() throws IOException {
+        StringBuilder message = new StringBuilder();
+        File folder = new File(repository);
+        File[] listOfFiles = folder.listFiles();
+        if (listOfFiles != null && listOfFiles.length != 0) {
+            for (File file : listOfFiles) {
+                if (file.isFile()) {
+                    getInformationString(file, message);
+                }
+            }
+            message.deleteCharAt(message.length() - 1);
+            dataOutputStream.writeUTF(message.toString());
+        } else {
+            dataOutputStream.writeUTF("Empty folder");
+        }
+    }
+
+    private void getInformationString(File file, StringBuilder message) throws IOException {
+        message.append(file.getName()).append("@");
+        Path path = file.toPath();
+        BasicFileAttributes basicFileAttributes = Files.readAttributes(path, BasicFileAttributes.class);
+        Timestamp date =
+                new Timestamp(basicFileAttributes.creationTime().to(TimeUnit.MILLISECONDS));
+        message.append(date.toString()).append("@");
+        message.append(basicFileAttributes.size()).append("@");
+    }
+
+    private void changeRepository() throws IOException {
+        dataOutputStream.writeUTF(repository);
+        repository = dataInputStream.readUTF();
+        if (repository.charAt(repository.length() - 1) != '/') {
+            repository += "/";
+        }
+        System.out.println("New Repository: " + repository);
+    }
+
+    public static void main(String[] args) throws Exception {
         ServerSocket serverSocket = new ServerSocket(8080);
         System.out.println("FTP Server Started on Port Number 8080");
         while (true) {

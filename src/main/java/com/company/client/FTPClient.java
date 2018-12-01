@@ -1,7 +1,8 @@
-package com.company;
+package com.company.client;
 
 import java.io.*;
 import java.net.Socket;
+import java.util.List;
 
 public class FTPClient {
 
@@ -96,7 +97,9 @@ public class FTPClient {
             System.out.println("[ MENU ]");
             System.out.println("1. Send File");
             System.out.println("2. Receive File");
-            System.out.println("3. Exit");
+            System.out.println("3. Change repository");
+            System.out.println("4. Get List File");
+            System.out.println("5. Exit");
             System.out.print("\nEnter Choice :");
             int choice;
             choice = Integer.parseInt(bufferedReader.readLine());
@@ -110,17 +113,47 @@ public class FTPClient {
                     receiveFile();
                     break;
                 case 3:
+                    dataOutputStream.writeUTF("CHANGE");
+                    changeRepository();
+                    break;
+                case 4:
+                    dataOutputStream.writeUTF("GET_LIST");
+                    getListFile();
+                    break;
+                case 5:
                     dataOutputStream.writeUTF("DISCONNECT");
                     System.exit(1);
                     break;
             }
+
         }
     }
 
-    public static void main(String args[]) throws Exception {
+    private void getListFile() throws IOException {
+        String message = dataInputStream.readUTF();
+        System.out.println("Files");
+        String[] listFile = message.split("@");
+        if(listFile.length == 1){
+            System.out.println(message + "\n");
+            return;
+        }
+        for (int i = 0; i < listFile.length; i = i + 3) {
+            System.out.println("Name: " + listFile[i] + " Time Create: " + listFile[i + 1] + " Size: " + listFile[i + 2] + " Bytes");
+        }
+        System.out.println();
+    }
+
+    private void changeRepository() throws IOException{
+        String curRepo = dataInputStream.readUTF();
+        System.out.println(curRepo);
+        System.out.println("Input new repo");
+        String newRepo = bufferedReader.readLine();
+        dataOutputStream.writeUTF(newRepo);
+    }
+
+    public static void main(String[] args) throws Exception {
         Socket socket = new Socket("127.0.0.1", 8080);
         FTPClient ftpClient = new FTPClient(socket);
         ftpClient.displayMenu();
-
     }
 }
